@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NVIDIA Store Financial Subledger — SANDBOX</title>
+<style>
+  :root{
+    --bg: #f5f7f8;
+    --panel: #ffffff;
+    --panel-alt: #f1f4f6;
+    --raised: #eef1f3;
+    --border: #dde3e8;
+    --border-soft: #e6eaed;
+    --text: #14181c;
+    --text-dim: #57626b;
+    --text-faint: #8994a0;
+    --accent: #5c9100;
+    --accent-dim: #4a7400;
+    --accent-glow: rgba(92,145,0,0.12);
+    --red: #c9463c;
+    --red-dim: rgba(201,70,60,0.09);
+    --amber: #a5720f;
+    --amber-dim: rgba(165,114,15,0.10);
+    --blue: #2969c4;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;-webkit-font-smoothing:antialiased;}
+  #app{display:flex;min-height:100vh;}
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{width:222px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:0;}
+  .brand{padding:20px 18px 16px;border-bottom:1px solid var(--border);}
+  .brand-mark{display:flex;align-items:center;gap:9px;}
+  .brand-dot{width:10px;height:10px;border-radius:2px;background:var(--accent);box-shadow:0 0 10px var(--accent-glow);flex-shrink:0;}
+  .brand-name{font-weight:700;font-size:14.5px;letter-spacing:0.2px;}
+  .brand-sub{font-size:10.5px;color:var(--text-faint);margin-top:5px;font-family:var(--mono);letter-spacing:0.5px;text-transform:uppercase;}
+  .nav{flex:1;padding:14px 10px;}
+  .nav-group-label{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-faint);padding:10px 10px 6px;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:6px;cursor:pointer;color:var(--text-dim);font-size:13px;margin-bottom:2px;transition:background 0.12s;user-select:none;}
+  .nav-item:hover{background:var(--panel-alt);color:var(--text);}
+  .nav-item.active{background:var(--accent-glow);color:var(--accent);font-weight:600;}
+  .nav-icon{width:16px;text-align:center;font-family:var(--mono);font-size:12px;opacity:0.9;}
+  .nav-badge{margin-left:auto;font-size:10px;font-family:var(--mono);background:var(--raised);color:var(--text-dim);padding:1px 6px;border-radius:9px;}
+  .nav-badge.warn{background:var(--amber-dim);color:var(--amber);}
+  .sidebar-footer{padding:14px 18px;border-top:1px solid var(--border);font-size:10.5px;color:var(--text-faint);font-family:var(--mono);line-height:1.6;}
+
+  /* ---------- Main ---------- */
+  .main{flex:1;min-width:0;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);flex-shrink:0;}
+  .topbar-left h1{font-size:18px;margin:0 0 3px;font-weight:700;}
+  .topbar-left .sub{font-size:12px;color:var(--text-dim);}
+  .topbar-right{display:flex;align-items:center;gap:10px;}
+  .env-badge{font-family:var(--mono);font-size:10.5px;letter-spacing:0.6px;background:var(--amber-dim);color:var(--amber);padding:5px 10px;border-radius:5px;border:1px solid rgba(210,153,34,0.3);}
+  .content{flex:1;overflow-y:auto;padding:24px 28px 60px;}
+
+  /* ---------- Buttons ---------- */
+  .btn{font-family:var(--sans);font-size:12.5px;font-weight:600;padding:8px 14px;border-radius:6px;border:1px solid var(--border);background:var(--raised);color:var(--text);cursor:pointer;transition:all 0.12s;white-space:nowrap;}
+  .btn:hover{border-color:#c3ccd3;background:#e4e9ec;}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#0a1200;}
+  .btn.primary:hover{background:#84cc00;}
+  .btn.danger{background:transparent;border-color:rgba(240,102,94,0.35);color:var(--red);}
+  .btn.danger:hover{background:var(--red-dim);}
+  .btn.ghost{background:transparent;}
+  .btn.small{padding:5px 10px;font-size:11.5px;}
+  .btn:disabled{opacity:0.4;cursor:not-allowed;}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;}
+
+  /* ---------- Cards / KPIs ---------- */
+  .kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px;}
+  .kpi-card{background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:16px 18px;}
+  .kpi-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;}
+  .kpi-value{font-size:22px;font-weight:700;font-family:var(--mono);}
+  .kpi-value.good{color:var(--accent);}
+  .kpi-value.warn{color:var(--amber);}
+  .kpi-value.bad{color:var(--red);}
+  .kpi-foot{font-size:11px;color:var(--text-faint);margin-top:6px;}
+
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:9px;margin-bottom:20px;overflow:hidden;}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);}
+  .panel-head h2{font-size:14px;margin:0;font-weight:700;}
+  .panel-head .desc{font-size:11.5px;color:var(--text-dim);margin-top:2px;}
+  .panel-body{padding:16px 18px;}
+
+  /* ---------- Tables ---------- */
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  thead th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-faint);padding:0 12px 8px;border-bottom:1px solid var(--border);font-weight:600;}
+  tbody td{padding:10px 12px;border-bottom:1px solid var(--border-soft);vertical-align:top;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr.clickable{cursor:pointer;}
+  tbody tr.clickable:hover{background:var(--panel-alt);}
+  td.num, th.num{text-align:right;font-family:var(--mono);}
+  td.mono, th.mono{font-family:var(--mono);}
+  .table-wrap{overflow-x:auto;}
+
+  .pill{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:0.3px;}
+  .pill.green{background:var(--accent-glow);color:var(--accent);}
+  .pill.amber{background:var(--amber-dim);color:var(--amber);}
+  .pill.red{background:var(--red-dim);color:var(--red);}
+  .pill.blue{background:rgba(88,166,255,0.12);color:var(--blue);}
+  .pill.gray{background:var(--raised);color:var(--text-dim);}
+
+  .drawer{border-top:1px dashed var(--border);background:var(--panel-alt);padding:14px 18px;}
+  .je-line-table td, .je-line-table th{padding:6px 10px;}
+  .je-line-table{font-size:12px;}
+
+  .empty-state{text-align:center;padding:40px 20px;color:var(--text-faint);}
+  .empty-state .glyph{font-size:26px;margin-bottom:8px;opacity:0.5;}
+
+  .idoc-block{background:#0a0f14;border:1px solid var(--border);border-radius:7px;padding:14px 16px;font-family:var(--mono);font-size:11.5px;line-height:1.7;color:#9fe870;white-space:pre;overflow-x:auto;}
+  .idoc-block .seg{color:#58a6ff;}
+  .idoc-block .fld{color:#c9d1d9;}
+  .idoc-block .comment{color:#5b6773;}
+
+  .banner{display:flex;gap:10px;align-items:flex-start;background:var(--amber-dim);border:1px solid rgba(210,153,34,0.3);color:var(--amber);padding:10px 14px;border-radius:7px;font-size:12px;margin-bottom:18px;}
+  .banner.info{background:rgba(88,166,255,0.08);border-color:rgba(88,166,255,0.25);color:var(--blue);}
+  .banner.bad{background:var(--red-dim);border-color:rgba(240,102,94,0.3);color:var(--red);}
+
+  .toast-wrap{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:999;}
+  .toast{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--accent);padding:10px 16px;border-radius:6px;font-size:12.5px;box-shadow:0 6px 20px rgba(20,24,28,0.12);min-width:240px;animation:slidein 0.2s ease-out;}
+  .toast.bad{border-left-color:var(--red);}
+  @keyframes slidein{from{transform:translateX(20px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+  .form-field label{display:block;font-size:11px;color:var(--text-dim);margin-bottom:5px;}
+  select, input[type=text], input[type=number]{width:100%;background:var(--panel-alt);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:5px;font-size:12.5px;font-family:var(--sans);}
+  select:focus, input:focus{outline:none;border-color:var(--accent);}
+  .checkbox-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-dim);}
+
+  .section-note{font-size:11.5px;color:var(--text-faint);margin-top:8px;line-height:1.6;}
+  .divider{height:1px;background:var(--border);margin:16px 0;}
+  .flex-between{display:flex;align-items:center;justify-content:space-between;}
+  .tag-list{display:flex;gap:6px;flex-wrap:wrap;}
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-thumb{background:#c7ced4;border-radius:5px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* =========================================================================
+   NVIDIA STORE FINANCIAL SUBLEDGER — SANDBOX PROTOTYPE
+   Purpose: simulate the middle-tier subledger that sits between the B2C
+   e-commerce storefront and NVIDIA corporate SAP (FI/CO). Captures raw
+   commerce events, converts them into balanced double-entry journal
+   entries against a mock chart of accounts, batches them, "posts" them
+   to a mocked SAP layer (BKPF/BSEG-style), and reconciles subledger
+   balances against the mocked SAP GL.
+   All data is synthetic and lives in memory for this browser tab only.
+   ========================================================================= */
+
+const COMPANY_CODE = "1000";
+const COMPANY_NAME = "NVIDIA Corporation";
+const CURRENT_PERIOD = "008/2026"; // Aug 2026, matches "today"
+
+const GL_ACCOUNTS = [
+  { code:"110000", name:"Cash – Operating Bank",                 type:"Asset",          normal:"Debit"  },
+  { code:"112000", name:"AR Clearing – Payment Gateway",         type:"Asset",          normal:"Debit"  },
+  { code:"114000", name:"Refund / Chargeback Clearing",          type:"Asset",          normal:"Debit"  },
+  { code:"220000", name:"Sales Tax Payable",                     type:"Liability",      normal:"Credit" },
+  { code:"400000", name:"Product Revenue – Consumer HW",         type:"Revenue",        normal:"Credit" },
+  { code:"401000", name:"Shipping Revenue",                      type:"Revenue",        normal:"Credit" },
+  { code:"490000", name:"Sales Discounts & Allowances",          type:"Contra-Revenue", normal:"Debit"  },
+  { code:"630000", name:"Merchant Processing Fees",              type:"Expense",        normal:"Debit"  },
+];
+
+const EVENT_MAPPING = [
+  { event:"ORDER_CAPTURED",     desc:"Customer order authorized & captured by payment gateway", accounts:["112000","400000","401000","220000","490000"] },
+  { event:"SETTLEMENT",         desc:"Gateway settles net proceeds to NVIDIA operating bank",     accounts:["110000","630000","112000"] },
+  { event:"REFUND_ISSUED",      desc:"Full or partial refund issued to customer",                 accounts:["400000","220000","401000","490000","114000"] },
+  { event:"CHARGEBACK_FILED",   desc:"Cardholder dispute filed, funds placed in clearing",         accounts:["114000","112000"] },
+  { event:"CHARGEBACK_LOST",    desc:"Dispute resolved against NVIDIA — funds clawed back",         accounts:["490000","114000"] },
+];
+
+const CATALOG = [
+  { sku:"GFX-5090-FE", name:"GeForce RTX 5090 Founders Edition", price:1999 },
+  { sku:"GFX-5080-FE", name:"GeForce RTX 5080 Founders Edition", price:1199 },
+  { sku:"DGX-SPARK-01", name:"DGX Spark Desktop AI Computer",    price:3999 },
+  { sku:"ACC-SHIELD-4K", name:"NVIDIA SHIELD TV Pro",            price:199  },
+  { sku:"WAR-EXT-2Y",  name:"2-Year Extended Warranty",          price:199  },
+];
+
+const TAX_JURISDICTIONS = [
+  { state:"CA", rate:0.0725 }, { state:"TX", rate:0.0625 }, { state:"WA", rate:0.065 },
+  { state:"NY", rate:0.08 },  { state:"OR", rate:0.0 },     { state:"FL", rate:0.06 },
+];
+
+// ---------------------------------------------------------------------
+// STATE
+// ---------------------------------------------------------------------
+let state = {
+  activeTab: "dashboard",
+  orders: [],
+  journalEntries: [],
+  batches: [],
+  auditLog: [],
+  sapGLAdjustments: [], // manual out-of-band postings for reconciliation demo
+  counters: { order: 10230, je: 4210, batch: 812 },
+  expanded: {}, // track which rows are expanded, keyed by id
+};
+
+function nowStr(){
+  const d = new Date();
+  return d.toISOString().replace("T"," ").slice(0,19);
+}
+function fmtMoney(n){
+  const neg = n < 0;
+  const v = Math.abs(n).toLocaleString("en-US",{minimumFractionDigits:2, maximumFractionDigits:2});
+  return (neg? "-$":"$") + v;
+}
+function fmtDate(d){ return d; }
+function uid(prefix, key){
+  state.counters[key] += 1;
+  return prefix + "-" + String(state.counters[key]).padStart(6,"0");
+}
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function round2(n){ return Math.round(n*100)/100; }
+
+function log(action, detail, actor){
+  state.auditLog.unshift({
+    ts: nowStr(),
+    actor: actor || "SYSTEM",
+    action,
+    detail
+  });
+}
+
+function toast(msg, isBad){
+  const wrap = document.getElementById("toastWrap");
+  const el = document.createElement("div");
+  el.className = "toast" + (isBad? " bad":"");
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(()=>{ el.style.opacity="0"; el.style.transition="opacity 0.3s"; setTimeout(()=>el.remove(),300); }, 3200);
+}
+
+// ---------------------------------------------------------------------
+// ACCOUNTING ENGINE
+// ---------------------------------------------------------------------
+function glName(code){
+  const a = GL_ACCOUNTS.find(x=>x.code===code);
+  return a ? a.name : code;
+}
+
+function makeLine(account, debit, credit, memo, costCenter){
+  return { account, debit: round2(debit||0), credit: round2(credit||0), memo, costCenter: costCenter||"CC-ECOM-US" };
+}
+
+function buildOrderCapturedJE(order){
+  const lines = [];
+  lines.push(makeLine("112000", order.total, 0, "Customer payment captured via gateway"));
+  lines.push(makeLine("400000", 0, order.subtotal, "Gross product revenue"));
+  if (order.shipping > 0) lines.push(makeLine("401000", 0, order.shipping, "Shipping revenue"));
+  if (order.discount > 0) lines.push(makeLine("490000", order.discount, 0, "Promo discount applied"));
+  if (order.tax > 0) lines.push(makeLine("220000", 0, order.tax, "Sales tax collected — " + order.state));
+  return lines;
+}
+
+function buildSettlementJE(order){
+  const fee = round2(order.total * 0.029 + 0.30);
+  const net = round2(order.total - fee);
+  return [
+    makeLine("110000", net, 0, "Net settlement to operating bank"),
+    makeLine("630000", fee, 0, "Payment gateway processing fee"),
+    makeLine("112000", 0, order.total, "Clear AR — gateway settled"),
+  ];
+}
+
+function buildRefundJE(order, refundAmount){
+  const r = refundAmount / order.total;
+  const lines = [];
+  lines.push(makeLine("400000", round2(order.subtotal*r), 0, "Reverse product revenue"));
+  if (order.tax>0) lines.push(makeLine("220000", round2(order.tax*r), 0, "Reverse sales tax payable"));
+  if (order.shipping>0) lines.push(makeLine("401000", round2(order.shipping*r), 0, "Reverse shipping revenue"));
+  if (order.discount>0) lines.push(makeLine("490000", 0, round2(order.discount*r), "Reverse discount contra-entry"));
+  lines.push(makeLine("114000", 0, round2(refundAmount), "Refund issued to customer"));
+  // rounding plug to guarantee balance to the cent
+  balancePlug(lines);
+  return lines;
+}
+
+function buildChargebackFiledJE(order, amount){
+  return [
+    makeLine("114000", amount, 0, "Dispute filed — funds held in clearing"),
+    makeLine("112000", 0, amount, "Remove from gateway AR clearing"),
+  ];
+}
+
+function buildChargebackLostJE(order, amount){
+  return [
+    makeLine("490000", amount, 0, "Chargeback loss — revenue reversal"),
+    makeLine("114000", 0, amount, "Clear dispute clearing account"),
+  ];
+}
+
+function balancePlug(lines){
+  let d=0,c=0;
+  lines.forEach(l=>{d+=l.debit;c+=l.credit;});
+  const diff = round2(d-c);
+  if (Math.abs(diff) >= 0.01){
+    if (diff>0) lines.push(makeLine("490000", 0, diff, "Rounding plug"));
+    else lines.push(makeLine("490000", -diff, 0, "Rounding plug"));
+  }
+}
+
+function jeTotals(lines){
+  let d=0,c=0; lines.forEach(l=>{d+=l.debit;c+=l.credit;});
+  return { debit: round2(d), credit: round2(c) };
+}
+
+function createJE(order, event, lines){
+  const t = jeTotals(lines);
+  const je = {
+    id: uid("JE","je"),
+    date: nowStr().slice(0,10),
+    orderId: order.orderId,
+    event,
+    memo: event + " — " + order.orderId,
+    lines,
+    totalDebit: t.debit,
+    totalCredit: t.credit,
+    status: "Unposted", // Unposted -> Batched -> Posted / Failed
+    batchId: null,
+  };
+  state.journalEntries.unshift(je);
+  log(event, `${je.id} generated for ${order.orderId} — DR ${fmtMoney(t.debit)} / CR ${fmtMoney(t.credit)}`);
+  return je;
+}
+
+// ---------------------------------------------------------------------
+// SEED DATA
+// ---------------------------------------------------------------------
+function seed(){
+  state = {
+    activeTab:"dashboard", orders:[], journalEntries:[], batches:[], auditLog:[],
+    sapGLAdjustments: [], counters:{order:10230, je:4210, batch:812}, expanded:{}
+  };
+  log("SYSTEM_INIT", "Sandbox environment initialized with synthetic demo data.");
+  // create ~14 historical orders across a few days
+  for(let i=0;i<14;i++){
+    const order = simulateOrder({silent:true, backdateDays: 6 - Math.floor(i/2.4)});
+  }
+  // issue a couple refunds & one chargeback for realism
+  const refundCandidates = state.orders.slice(4,7);
+  if (refundCandidates[0]) simulateRefund(refundCandidates[0].orderId, "full", {silent:true});
+  if (refundCandidates[1]) simulateRefund(refundCandidates[1].orderId, "partial", {silent:true});
+  if (state.orders[9]) simulateChargeback(state.orders[9].orderId, {silent:true});
+
+  // batch & post the older journal entries so dashboard/reconciliation look "alive"
+  const olderJeIds = state.journalEntries
+    .filter(j=>j.status==="Unposted")
+    .slice(6) // leave newest ones unbatched
+    .map(j=>j.id);
+  if (olderJeIds.length){
+    const batch = createBatch(olderJeIds, {silent:true});
+    postBatch(batch.id, {silent:true, forceSuccess:true});
+  }
+  log("SYSTEM_INIT", "Seed complete: " + state.orders.length + " orders, " + state.journalEntries.length + " journal entries.");
+}
+
+// ---------------------------------------------------------------------
+// SIMULATION ACTIONS (mock e-commerce webhooks)
+// ---------------------------------------------------------------------
+function simulateOrder(opts){
+  opts = opts||{};
+  const itemCount = 1 + (Math.random()<0.3?1:0);
+  let subtotal = 0;
+  const items = [];
+  for(let i=0;i<itemCount;i++){
+    const p = pick(CATALOG);
+    const qty = 1;
+    items.push({sku:p.sku, name:p.name, qty, price:p.price});
+    subtotal += p.price*qty;
+  }
+  const jurisdiction = pick(TAX_JURISDICTIONS);
+  const hasDiscount = Math.random() < 0.25;
+  const discount = hasDiscount ? round2(subtotal*0.10) : 0;
+  const taxable = subtotal - discount;
+  const tax = round2(taxable * jurisdiction.rate);
+  const shipping = Math.random()<0.5 ? 0 : 15;
+  const total = round2(subtotal - discount + tax + shipping);
+
+  const d = new Date();
+  if (opts.backdateDays) d.setDate(d.getDate()-opts.backdateDays);
+
+  const order = {
+    orderId: uid("ORD","order"),
+    date: d.toISOString().slice(0,10),
+    customer: pick(["A. Chen","M. Okafor","J. Alvarez","R. Petrov","S. Kim","T. Nguyen","L. Fischer","D. Osei"]),
+    items, subtotal: round2(subtotal), discount, tax, shipping, total,
+    state: jurisdiction.state,
+    paymentStatus: "Captured",
+    subledgerStatus: "Unprocessed",
+    refundedAmount: 0,
+    chargebackStatus: null,
+  };
+  state.orders.unshift(order);
+  log("ORDER_WEBHOOK", `${order.orderId} received from storefront — ${fmtMoney(order.total)} (${order.state})`);
+
+  const lines = buildOrderCapturedJE(order);
+  createJE(order, "ORDER_CAPTURED", lines);
+  order.subledgerStatus = "Journalized";
+
+  if (!opts.silent){ toast("New order simulated: " + order.orderId); render(); }
+  return order;
+}
+
+function simulateRefund(orderId, mode, opts){
+  opts = opts||{};
+  const order = state.orders.find(o=>o.orderId===orderId);
+  if (!order) return;
+  const remaining = round2(order.total - order.refundedAmount);
+  if (remaining <= 0){ if(!opts.silent) toast("Order already fully refunded", true); return; }
+  const amount = mode==="full" ? remaining : round2(remaining*0.5);
+  order.refundedAmount = round2(order.refundedAmount + amount);
+  order.paymentStatus = order.refundedAmount >= order.total ? "Refunded" : "Partially Refunded";
+
+  const lines = buildRefundJE(order, amount);
+  createJE(order, "REFUND_ISSUED", lines);
+  log("REFUND_WEBHOOK", `${fmtMoney(amount)} refund issued for ${order.orderId} (${mode})`);
+  if (!opts.silent){ toast("Refund simulated for " + order.orderId); render(); }
+}
+
+function simulateChargeback(orderId, opts){
+  opts = opts||{};
+  const order = state.orders.find(o=>o.orderId===orderId);
+  if (!order || order.chargebackStatus) return;
+  const amount = order.total;
+  const lines = buildChargebackFiledJE(order, amount);
+  createJE(order, "CHARGEBACK_FILED", lines);
+  order.chargebackStatus = "Filed";
+  log("CHARGEBACK_WEBHOOK", `Dispute filed on ${order.orderId} for ${fmtMoney(amount)}`);
+  if (!opts.silent){ toast("Chargeback simulated for " + order.orderId); render(); }
+}
+
+function resolveChargeback(orderId, outcome){
+  const order = state.orders.find(o=>o.orderId===orderId);
+  if (!order) return;
+  if (outcome==="lost"){
+    const lines = buildChargebackLostJE(order, order.total);
+    createJE(order, "CHARGEBACK_LOST", lines);
+    order.chargebackStatus = "Lost";
+    log("CHARGEBACK_RESOLUTION", `${order.orderId} dispute resolved: LOST — revenue reversed`);
+  } else {
+    order.chargebackStatus = "Won";
+    log("CHARGEBACK_RESOLUTION", `${order.orderId} dispute resolved: WON — funds retained, clearing released`);
+  }
+  toast("Chargeback resolved (" + outcome + ") for " + order.orderId);
+  render();
+}
+
+// ---------------------------------------------------------------------
+// BATCH / SAP POSTING SIMULATION
+// ---------------------------------------------------------------------
+function pendingJEs(){
+  return state.journalEntries.filter(j=>j.status==="Unposted");
+}
+
+function createBatch(jeIds, opts){
+  opts = opts||{};
+  const ids = jeIds || pendingJEs().map(j=>j.id);
+  if (!ids.length){ if(!opts.silent) toast("No pending journal entries to batch", true); return null; }
+  let d=0,c=0;
+  ids.forEach(id=>{
+    const je = state.journalEntries.find(j=>j.id===id);
+    je.status = "Batched";
+    d += je.totalDebit; c += je.totalCredit;
+  });
+  const batch = {
+    id: uid("BATCH","batch"),
+    createdDate: nowStr().slice(0,10),
+    period: CURRENT_PERIOD,
+    jeIds: ids,
+    totalDebit: round2(d),
+    totalCredit: round2(c),
+    status: "Draft", // Draft -> Posted / Failed
+    sapDocNumber: null,
+    postedDate: null,
+    lastError: null,
+  };
+  state.batches.unshift(batch);
+  ids.forEach(id=>{ state.journalEntries.find(j=>j.id===id).batchId = batch.id; });
+  log("BATCH_CREATED", `${batch.id} created with ${ids.length} entries — DR ${fmtMoney(batch.totalDebit)} / CR ${fmtMoney(batch.totalCredit)}`);
+  if (!opts.silent){ toast(batch.id + " created (" + ids.length + " entries)"); render(); }
+  return batch;
+}
+
+function postBatch(batchId, opts){
+  opts = opts||{};
+  const batch = state.batches.find(b=>b.id===batchId);
+  if (!batch) return;
+  const simulateFailure = opts.forceFail || (document.getElementById("simFailToggle-"+batchId) && document.getElementById("simFailToggle-"+batchId).checked);
+
+  if (simulateFailure && !opts.forceSuccess){
+    batch.status = "Failed";
+    batch.lastError = "SAP Return: Message no. F5 691 — Posting period 08 2026 is not open for company code 1000 in the specified variant.";
+    log("SAP_POST_FAILED", `${batch.id} rejected by SAP — ${batch.lastError}`, "SAP_MOCK");
+    if(!opts.silent) toast(batch.id + " rejected by SAP — see error", true);
+    render();
+    return;
+  }
+
+  batch.status = "Posted";
+  batch.sapDocNumber = "51" + String(Math.floor(10000000+Math.random()*89999999));
+  batch.postedDate = nowStr().slice(0,10);
+  batch.lastError = null;
+  batch.jeIds.forEach(id=>{
+    const je = state.journalEntries.find(j=>j.id===id);
+    je.status = "Posted";
+  });
+  log("SAP_POST_SUCCESS", `${batch.id} posted to SAP — Accounting doc ${batch.sapDocNumber}, company code ${COMPANY_CODE}`, "SAP_MOCK");
+  if (!opts.silent) toast(batch.id + " posted — SAP doc " + batch.sapDocNumber);
+  render();
+}
+
+function retryBatch(batchId){
+  const batch = state.batches.find(b=>b.id===batchId);
+  if (!batch) return;
+  postBatch(batchId, {forceSuccess:true});
+}
+
+// ---------------------------------------------------------------------
+// RECONCILIATION
+// ---------------------------------------------------------------------
+function computeSubledgerBalances(){
+  const bal = {};
+  GL_ACCOUNTS.forEach(a=>bal[a.code]=0);
+  state.journalEntries.filter(j=>j.status==="Posted").forEach(je=>{
+    je.lines.forEach(l=>{
+      const acct = GL_ACCOUNTS.find(a=>a.code===l.account);
+      const sign = acct.normal==="Debit" ? 1 : -1;
+      bal[l.account] += sign*(l.debit - l.credit);
+    });
+  });
+  return bal;
+}
+
+function computeSapBalances(){
+  // In this mock, SAP GL = subledger-posted balances + any manual out-of-band adjustments
+  const sub = computeSubledgerBalances();
+  const sap = {...sub};
+  state.sapGLAdjustments.forEach(adj=>{
+    sap[adj.account] = round2((sap[adj.account]||0) + adj.amount);
+  });
+  return sap;
+}
+
+function injectManualSapEntry(){
+  const acct = pick(GL_ACCOUNTS.filter(a=>["400000","220000","630000"].includes(a.code)));
+  const amount = round2((Math.random()*180+20) * (Math.random()<0.5?1:-1));
+  state.sapGLAdjustments.push({ account: acct.code, amount, note:"Manual FI posting (FB50) outside e-commerce subledger" });
+  log("MANUAL_SAP_ENTRY", `Out-of-band SAP entry simulated: ${fmtMoney(amount)} to ${acct.code} ${acct.name}`, "SAP_MOCK");
+  toast("Simulated a manual SAP-side posting — run reconciliation to detect it");
+  render();
+}
+
+// ---------------------------------------------------------------------
+// RENDER HELPERS
+// ---------------------------------------------------------------------
+function statusPill(status){
+  const map = {
+    "Unprocessed":"gray","Journalized":"blue","Captured":"blue","Refunded":"red","Partially Refunded":"amber",
+    "Unposted":"gray","Batched":"blue","Posted":"green","Failed":"red","Draft":"gray",
+    "Filed":"amber","Lost":"red","Won":"green"
+  };
+  return `<span class="pill ${map[status]||'gray'}">${status}</span>`;
+}
+
+function setTab(tab){ state.activeTab = tab; render(); }
+function toggleExpand(id){ state.expanded[id] = !state.expanded[id]; render(); }
+
+// ---------------------------------------------------------------------
+// TAB: DASHBOARD
+// ---------------------------------------------------------------------
+function renderDashboard(){
+  const pending = pendingJEs();
+  const pendingAmt = pending.reduce((s,j)=>s+j.totalDebit,0);
+  const openBatches = state.batches.filter(b=>b.status==="Draft"||b.status==="Failed").length;
+  const lastPosted = state.batches.find(b=>b.status==="Posted");
+  const subBal = computeSubledgerBalances();
+  const sapBal = computeSapBalances();
+  let variance = 0;
+  GL_ACCOUNTS.forEach(a=>{ variance += Math.abs(round2((subBal[a.code]||0)-(sapBal[a.code]||0))); });
+  const reconOk = variance < 0.01;
+  const ordersToday = state.orders.filter(o=>o.date===nowStr().slice(0,10)).length;
+
+  return `
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Orders Captured Today</div>
+        <div class="kpi-value">${ordersToday}</div>
+        <div class="kpi-foot">${state.orders.length} total in sandbox</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Unposted Subledger $</div>
+        <div class="kpi-value ${pendingAmt>0?'warn':'good'}">${fmtMoney(pendingAmt)}</div>
+        <div class="kpi-foot">${pending.length} journal entries awaiting batch</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Open Batches</div>
+        <div class="kpi-value ${openBatches>0?'warn':'good'}">${openBatches}</div>
+        <div class="kpi-foot">Draft or failed, needs attention</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Last SAP Post</div>
+        <div class="kpi-value" style="font-size:15px;">${lastPosted? lastPosted.sapDocNumber : '—'}</div>
+        <div class="kpi-foot">${lastPosted? lastPosted.postedDate + ' · CC ' + COMPANY_CODE : 'No batches posted yet'}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Reconciliation</div>
+        <div class="kpi-value ${reconOk?'good':'bad'}" style="font-size:15px;">${reconOk? 'Balanced' : fmtMoney(variance)+' var.'}</div>
+        <div class="kpi-foot">Subledger vs. mock SAP GL</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h2>Simulate storefront activity</h2><div class="desc">Inject synthetic webhook events from the B2C platform into the subledger pipeline.</div></div>
+      </div>
+      <div class="panel-body">
+        <div class="btn-row">
+          <button class="btn primary" onclick="simulateOrder()">+ Simulate new order</button>
+          <button class="btn" onclick="quickRefund()">Simulate refund on recent order</button>
+          <button class="btn" onclick="quickChargeback()">Simulate chargeback on recent order</button>
+          <button class="btn" onclick="createBatch()">Create batch from pending entries</button>
+          <button class="btn ghost" onclick="seed(); render(); toast('Sandbox reset to fresh seed data')">Reset sandbox data</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h2>Recent audit activity</h2><div class="desc">Most recent 10 events across the pipeline.</div></div>
+        <button class="btn small" onclick="setTab('audit')">View full log →</button>
+      </div>
+      <div class="panel-body table-wrap">
+        <table>
+          <thead><tr><th style="width:150px;">Timestamp</th><th style="width:90px;">Actor</th><th style="width:170px;">Action</th><th>Detail</th></tr></thead>
+          <tbody>
+            ${state.auditLog.slice(0,10).map(a=>`
+              <tr>
+                <td class="mono">${a.ts}</td>
+                <td><span class="pill ${a.actor==='SAP_MOCK'?'blue':'gray'}">${a.actor}</span></td>
+                <td class="mono">${a.action}</td>
+                <td>${a.detail}</td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+function quickRefund(){
+  const candidate = state.orders.find(o=>o.paymentStatus==="Captured" && o.subledgerStatus==="Journalized");
+  if (!candidate){ toast("No eligible order found to refund", true); return; }
+  simulateRefund(candidate.orderId, Math.random()<0.5?"full":"partial");
+}
+function quickChargeback(){
+  const candidate = state.orders.find(o=>!o.chargebackStatus && o.paymentStatus==="Captured");
+  if (!candidate){ toast("No eligible order found for chargeback", true); return; }
+  simulateChargeback(candidate.orderId);
+}
+
+// ---------------------------------------------------------------------
+// TAB: ORDERS
+// ---------------------------------------------------------------------
+function renderOrders(){
+  return `
+    <div class="panel">
+      <div class="panel-head">
+        <div><h2>Storefront order feed</h2><div class="desc">Raw commerce events received from the B2C e-commerce platform.</div></div>
+        <button class="btn primary small" onclick="simulateOrder()">+ Simulate new order</button>
+      </div>
+      <div class="panel-body table-wrap">
+        <table>
+          <thead><tr>
+            <th>Order</th><th>Date</th><th>Customer</th><th>Jurisdiction</th>
+            <th class="num">Subtotal</th><th class="num">Discount</th><th class="num">Tax</th><th class="num">Ship</th><th class="num">Total</th>
+            <th>Payment</th><th>Subledger</th><th>Dispute</th><th style="width:190px;">Actions</th>
+          </tr></thead>
+          <tbody>
+            ${state.orders.slice(0,60).map(o=>`
+              <tr>
+                <td class="mono">${o.orderId}</td>
+                <td class="mono">${o.date}</td>
+                <td>${o.customer}</td>
+                <td class="mono">${o.state}</td>
+                <td class="num">${fmtMoney(o.subtotal)}</td>
+                <td class="num">${o.discount? '-'+fmtMoney(o.discount):'—'}</td>
+                <td class="num">${fmtMoney(o.tax)}</td>
+                <td class="num">${o.shipping? fmtMoney(o.shipping):'—'}</td>
+                <td class="num" style="font-weight:700;">${fmtMoney(o.total)}</td>
+                <td>${statusPill(o.paymentStatus)}</td>
+                <td>${statusPill(o.subledgerStatus)}</td>
+                <td>${o.chargebackStatus? statusPill(o.chargebackStatus) : '—'}</td>
+                <td>
+                  <div class="btn-row">
+                    <button class="btn small" onclick="simulateRefund('${o.orderId}','partial')" ${o.refundedAmount>=o.total?'disabled':''}>Refund 50%</button>
+                    <button class="btn small" onclick="simulateRefund('${o.orderId}','full')" ${o.refundedAmount>=o.total?'disabled':''}>Refund full</button>
+                    ${!o.chargebackStatus? `<button class="btn small danger" onclick="simulateChargeback('${o.orderId}')">Dispute</button>` :
+                      o.chargebackStatus==='Filed' ? `<button class="btn small" onclick="resolveChargeback('${o.orderId}','won')">Mark won</button><button class="btn small danger" onclick="resolveChargeback('${o.orderId}','lost')">Mark lost</button>` : ''}
+                  </div>
+                </td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------
+// TAB: SUBLEDGER (Journal Entries)
+// ---------------------------------------------------------------------
+function renderSubledger(){
+  const filter = state.jeFilter || "All";
+  const filters = ["All","Unposted","Batched","Posted"];
+  const rows = state.journalEntries.filter(j=> filter==="All" || j.status===filter);
+  return `
+    <div class="panel">
+      <div class="panel-head">
+        <div><h2>Subledger journal entries</h2><div class="desc">Every commerce event is converted into a balanced double-entry journal entry before it ever touches SAP.</div></div>
+        <div class="btn-row">
+          ${filters.map(f=>`<button class="btn small ${filter===f?'primary':''}" onclick="state.jeFilter='${f}';render();">${f}</button>`).join("")}
+        </div>
+      </div>
+      <div class="panel-body table-wrap">
+        <table>
+          <thead><tr>
+            <th style="width:24px;"></th><th>JE ID</th><th>Date</th><th>Source order</th><th>Event</th>
+            <th class="num">Debit</th><th class="num">Credit</th><th>Status</th><th>Batch</th>
+          </tr></thead>
+          <tbody>
+            ${rows.map(je=>`
+              <tr class="clickable" onclick="toggleExpand('${je.id}')">
+                <td>${state.expanded[je.id]?'▾':'▸'}</td>
+                <td class="mono">${je.id}</td>
+                <td class="mono">${je.date}</td>
+                <td class="mono">${je.orderId}</td>
+                <td class="mono">${je.event}</td>
+                <td class="num">${fmtMoney(je.totalDebit)}</td>
+                <td class="num">${fmtMoney(je.totalCredit)}</td>
+                <td>${statusPill(je.status)}</td>
+                <td class="mono">${je.batchId||'—'}</td>
+              </tr>
+              ${state.expanded[je.id] ? `
+              <tr><td colspan="9" style="padding:0;">
+                <div class="drawer">
+                  <table class="je-line-table">
+                    <thead><tr><th>GL account</th><th>Account name</th><th>Line memo</th><th>Cost center</th><th class="num">Debit</th><th class="num">Credit</th></tr></thead>
+                    <tbody>
+                      ${je.lines.map(l=>`
+                        <tr>
+                          <td class="mono">${l.account}</td>
+                          <td>${glName(l.account)}</td>
+                          <td>${l.memo}</td>
+                          <td class="mono">${l.costCenter}</td>
+                          <td class="num">${l.debit? fmtMoney(l.debit):'—'}</td>
+                          <td class="num">${l.credit? fmtMoney(l.credit):'—'}</td>
+                        </tr>`).join("")}
+                    </tbody>
+                  </table>
+                </div>
+              </td></tr>` : ''}
+            `).join("")}
+          </tbody>
+        </table>
+        ${rows.length===0? `<div class="empty-state"><div class="glyph">📒</div>No journal entries match this filter.</div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------
+// TAB: GL MAPPING
+// ---------------------------------------------------------------------
+function renderMapping(){
+  return `
+    <div class="panel">
+      <div class="panel-head"><div><h2>Chart of accounts (subledger scope)</h2><div class="desc">The subset of the NVIDIA corporate chart of accounts this subledger is authorized to post against.</div></div></div>
+      <div class="panel-body table-wrap">
+        <table>
+          <thead><tr><th>GL account</th><th>Account name</th><th>Account type</th><th>Normal balance</th></tr></thead>
+          <tbody>
+            ${GL_ACCOUNTS.map(a=>`
+              <tr><td class="mono">${a.code}</td><td>${a.name}</td><td><span class="pill gray">${a.type}</span></td><td>${a.normal}</td></tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><div><h2>Business event → GL posting rules</h2><div class="desc">Deterministic rules the accounting engine uses to translate storefront events into journal lines.</div></div></div>
+      <div class="panel-body table-wrap">
+        <table>
+          <thead><tr><th>Event</th><th>Description</th><th>Accounts touched</th></tr></thead>
+          <tbody>
+            ${EVENT_MAPPING.map(e=>`
+              <tr>
+                <td class="mono">${e.event}</td>
+                <td>${e.desc}</td>
+                <td><div class="tag-list">${e.accounts.map(c=>`<span class="pill blue mono">${c}</span>`).join("")}</div></td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+        <div class="section-note">Rule changes in production would go through change control and a parallel test batch before promotion — this sandbox keeps the mapping fixed for consistency of the demo.</div>
+      </div>
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------
+// TAB: BATCH POSTING (SAP INTEGRATION)
+// ---------------------------------------------------------------------
+function renderBatches(){
+  const pending = pendingJEs();
+  const pendingAmt = pending.reduce((s,j)=>s+j.totalDebit,0);
+  return `
+    <div class="panel">
+      <div class="panel-head">
+        <div><h2>Ready to batch</h2><div class="desc">Unposted journal entries not yet assigned to an SAP posting batch.</div></div>
+        <button class="btn primary small" onclick="createBatch()" ${pending.length===0?'disabled':''}>Create batch (${pending.length} entries · ${fmtMoney(pendingAmt)})</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><div><h2>Batch history</h2><div class="desc">Each batch maps to one accounting document posted to SAP FI via a mocked BAPI/IDoc interface.</div></div></div>
+      <div class="panel-body table-wrap">
+        <table>
+          <thead><tr>
+            <th style="width:24px;"></th><th>Batch</th><th>Created</th><th>Period</th><th># JEs</th>
+            <th class="num">Debit</th><th class="num">Credit</th><th>Status</th><th>SAP doc</th><th style="width:230px;">Actions</th>
+          </tr></thead>
+          <tbody>
+            ${state.batches.map(b=>`
+              <tr class="clickable" onclick="toggleExpand('${b.id}')">
+                <td>${state.expanded[b.id]?'▾':'▸'}</td>
+                <td class="mono">${b.id}</td>
+                <td class="mono">${b.createdDate}</td>
+                <td class="mono">${b.period}</td>
+                <td class="num">${b.jeIds.length}</td>
+                <td class="num">${fmtMoney(b.totalDebit)}</td>
+                <td class="num">${fmtMoney(b.totalCredit)}</td>
+                <td>${statusPill(b.status)}</td>
+                <td class="mono">${b.sapDocNumber||'—'}</td>
+                <td onclick="event.stopPropagation();">
+                  <div class="btn-row">
+                    ${b.status==="Draft" ? `
+                      <label class="checkbox-row"><input type="checkbox" id="simFailToggle-${b.id}"> Simulate SAP rejection</label>
+                      <button class="btn small primary" onclick="postBatch('${b.id}')">Post to SAP</button>
+                    `: ''}
+                    ${b.status==="Failed" ? `<button class="btn small primary" onclick="retryBatch('${b.id}')">Retry post</button>` : ''}
+                  </div>
+                </td>
+              </tr>
+              ${state.expanded[b.id] ? `
+              <tr><td colspan="10" style="padding:0;">
+                <div class="drawer">
+                  ${b.status==="Failed" ? `<div class="banner bad">⚠ ${b.lastError}</div>` : ''}
+                  ${renderIdocPreview(b)}
+                </div>
+              </td></tr>` : ''}
+            `).join("")}
+          </tbody>
+        </table>
+        ${state.batches.length===0? `<div class="empty-state"><div class="glyph">📤</div>No batches created yet.</div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderIdocPreview(batch){
+  const lines = [];
+  batch.jeIds.forEach(id=>{
+    const je = state.journalEntries.find(j=>j.id===id);
+    je.lines.forEach(l=>lines.push({je, l}));
+  });
+  const bkpf = [
+    ["BUKRS  (Company Code)", COMPANY_CODE],
+    ["BLART  (Doc. Type)",    "RV — Billing document"],
+    ["BUDAT  (Posting Date)", batch.createdDate],
+    ["MONAT  (Fiscal Period)",batch.period],
+    ["WAERS  (Currency)",     "USD"],
+    ["BELNR  (Accounting Doc.)", batch.sapDocNumber || "(assigned on post)"],
+    ["XBLNR  (Reference)",    batch.id],
+  ];
+  let out = "";
+  out += `<span class="comment">* BKPF — Accounting Document Header</span>\n`;
+  bkpf.forEach(([k,v])=>{ out += `<span class="fld">${k.padEnd(26)}</span> = ${v}\n`; });
+  out += `\n<span class="comment">* BSEG — Document Line Items (${lines.length} total)</span>\n`;
+  out += `<span class="seg">POS  PK  HKONT     SHKZG  WRBTR       KOSTL          SGTXT</span>\n`;
+  lines.forEach((row,i)=>{
+    const isDebit = row.l.debit>0;
+    const pk = isDebit ? "40" : "50";
+    const amt = (isDebit? row.l.debit : row.l.credit).toFixed(2);
+    const pos = String(i+1).padStart(3,"0");
+    out += `${pos}  ${pk}  ${row.l.account}  ${isDebit?'S':'H'}      ${amt.padStart(10)}  ${row.l.costCenter.padEnd(13)}  ${row.l.memo}\n`;
+  });
+  return `<div class="idoc-block">${out}</div>`;
+}
+
+// ---------------------------------------------------------------------
+// TAB: RECONCILIATION
+// ---------------------------------------------------------------------
+function renderReconciliation(){
+  const sub = computeSubledgerBalances();
+  const sap = computeSapBalances();
+  let totalVar = 0;
+  const rows = GL_ACCOUNTS.map(a=>{
+    const s = round2(sub[a.code]||0);
+    const p = round2(sap[a.code]||0);
+    const v = round2(s-p);
+    totalVar += Math.abs(v);
+    return {a, s, p, v};
+  });
+  const ok = totalVar < 0.01;
+
+  return `
+    <div class="banner ${ok?'info':'bad'}">
+      ${ok ? "✓ Subledger and mock SAP GL balances are in agreement across all accounts in scope."
+            : "⚠ Variance detected between the subledger and mock SAP GL. Investigate the flagged accounts below — likely cause: a posting made directly in SAP outside the e-commerce pipeline."}
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h2>Trial balance comparison</h2><div class="desc">Company code ${COMPANY_CODE} · ${COMPANY_NAME} · Period ${CURRENT_PERIOD}</div></div>
+        <div class="btn-row">
+          <button class="btn small" onclick="injectManualSapEntry()">Simulate manual SAP-side entry</button>
+          <button class="btn small primary" onclick="render(); toast('Reconciliation recalculated')">Run reconciliation</button>
+        </div>
+      </div>
+      <div class="panel-body table-wrap">
+        <table>
+          <thead><tr><th>GL account</th><th>Name</th><th class="num">Subledger balance</th><th class="num">SAP GL balance</th><th class="num">Variance</th><th>Status</th></tr></thead>
+          <tbody>
+            ${rows.map(r=>`
+              <tr>
+                <td class="mono">${r.a.code}</td>
+                <td>${r.a.name}</td>
+                <td class="num">${fmtMoney(r.s)}</td>
+                <td class="num">${fmtMoney(r.p)}</td>
+                <td class="num" style="color:${Math.abs(r.v)>=0.01?'var(--red)':'inherit'}">${fmtMoney(r.v)}</td>
+                <td>${Math.abs(r.v)>=0.01? statusPill('Failed').replace('Failed','Variance') : statusPill('Posted').replace('Posted','Match')}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    ${state.sapGLAdjustments.length ? `
+    <div class="panel">
+      <div class="panel-head"><div><h2>Out-of-band SAP adjustments (simulated)</h2><div class="desc">Entries posted directly in SAP FI (e.g. via FB50) that never flowed through this subledger.</div></div></div>
+      <div class="panel-body table-wrap">
+        <table>
+          <thead><tr><th>Account</th><th class="num">Amount</th><th>Note</th></tr></thead>
+          <tbody>
+            ${state.sapGLAdjustments.map(adj=>`<tr><td class="mono">${adj.account} — ${glName(adj.account)}</td><td class="num">${fmtMoney(adj.amount)}</td><td>${adj.note}</td></tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>` : ''}
+  `;
+}
+
+// ---------------------------------------------------------------------
+// TAB: AUDIT LOG
+// ---------------------------------------------------------------------
+function renderAudit(){
+  return `
+    <div class="panel">
+      <div class="panel-head"><div><h2>Full audit trail</h2><div class="desc">Immutable, system-generated log of every action taken across the subledger pipeline.</div></div></div>
+      <div class="panel-body table-wrap">
+        <table>
+          <thead><tr><th style="width:170px;">Timestamp</th><th style="width:100px;">Actor</th><th style="width:190px;">Action</th><th>Detail</th></tr></thead>
+          <tbody>
+            ${state.auditLog.map(a=>`
+              <tr><td class="mono">${a.ts}</td><td><span class="pill ${a.actor==='SAP_MOCK'?'blue':'gray'}">${a.actor}</span></td><td class="mono">${a.action}</td><td>${a.detail}</td></tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------
+// EXPORT / IMPORT (no browser storage per platform restriction — file based)
+// ---------------------------------------------------------------------
+function exportState(){
+  const blob = new Blob([JSON.stringify(state,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "subledger-sandbox-export.json";
+  document.body.appendChild(a); a.click(); a.remove();
+  toast("Exported current sandbox state to JSON");
+}
+
+// ---------------------------------------------------------------------
+// APP SHELL / NAV
+// ---------------------------------------------------------------------
+const NAV = [
+  { key:"dashboard", icon:"◈", label:"Dashboard" },
+  { key:"orders", icon:"▤", label:"Order Feed" },
+  { key:"subledger", icon:"§", label:"Subledger / JEs" },
+  { key:"mapping", icon:"⚙", label:"GL Mapping" },
+  { key:"batches", icon:"⇄", label:"SAP Posting" },
+  { key:"recon", icon:"≈", label:"Reconciliation" },
+  { key:"audit", icon:"▦", label:"Audit Log" },
+];
+
+function titleFor(tab){
+  return {
+    dashboard:["Dashboard","Real-time pulse of the e-commerce → SAP subledger pipeline"],
+    orders:["Order Feed","Raw events streamed from the B2C storefront"],
+    subledger:["Subledger","Balanced double-entry journal entries derived from commerce events"],
+    mapping:["GL Mapping","Chart of accounts & posting rule configuration"],
+    batches:["SAP Posting","Batch, preview, and post journal entries to SAP FI"],
+    recon:["Reconciliation","Subledger vs. SAP general ledger balance comparison"],
+    audit:["Audit Log","Full system activity trail"],
+  }[tab];
+}
+
+function render(){
+  const pending = pendingJEs().length;
+  const failedBatches = state.batches.filter(b=>b.status==="Failed").length;
+  const [title, sub] = titleFor(state.activeTab);
+
+  let body;
+  switch(state.activeTab){
+    case "dashboard": body = renderDashboard(); break;
+    case "orders": body = renderOrders(); break;
+    case "subledger": body = renderSubledger(); break;
+    case "mapping": body = renderMapping(); break;
+    case "batches": body = renderBatches(); break;
+    case "recon": body = renderReconciliation(); break;
+    case "audit": body = renderAudit(); break;
+  }
+
+  document.getElementById("app").innerHTML = `
+    <div class="sidebar">
+      <div class="brand">
+        <div class="brand-mark"><div class="brand-dot"></div><div class="brand-name">NVIDIA Store Subledger</div></div>
+        <div class="brand-sub">FI Middle Tier · Sandbox</div>
+      </div>
+      <div class="nav">
+        <div class="nav-group-label">Pipeline</div>
+        ${NAV.slice(0,3).map(n=>navItem(n)).join("")}
+        <div class="nav-group-label">Configuration</div>
+        ${navItem(NAV[3])}
+        <div class="nav-group-label">SAP Integration</div>
+        ${navItem(NAV[4], pending>0?pending:null, failedBatches>0)}
+        ${navItem(NAV[5])}
+        <div class="nav-group-label">Governance</div>
+        ${navItem(NAV[6])}
+      </div>
+      <div class="sidebar-footer">
+        CC ${COMPANY_CODE} · ${COMPANY_NAME}<br>
+        Period ${CURRENT_PERIOD}<br>
+        <span style="cursor:pointer;text-decoration:underline;" onclick="exportState()">Export sandbox data ↓</span>
+      </div>
+    </div>
+    <div class="main">
+      <div class="topbar">
+        <div class="topbar-left"><h1>${title}</h1><div class="sub">${sub}</div></div>
+        <div class="topbar-right"><span class="env-badge">● SANDBOX — SYNTHETIC DATA — NOT CONNECTED TO PRODUCTION SAP</span></div>
+      </div>
+      <div class="content">${body}</div>
+    </div>
+  `;
+}
+
+function navItem(n, badge, isWarn){
+  const active = state.activeTab===n.key;
+  return `
+    <div class="nav-item ${active?'active':''}" onclick="setTab('${n.key}')">
+      <span class="nav-icon">${n.icon}</span><span>${n.label}</span>
+      ${badge? `<span class="nav-badge ${isWarn?'warn':''}">${badge}</span>` : ''}
+    </div>`;
+}
+
+// ---------------------------------------------------------------------
+// BOOT
+// ---------------------------------------------------------------------
+seed();
+render();
+</script>
+</body>
+</html>
